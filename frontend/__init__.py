@@ -1,0 +1,3 @@
+"""
+EduGenie Frontend Package
+"""

@@ -1,0 +1,3 @@
+"""
+EduGenie Views Package
+"""

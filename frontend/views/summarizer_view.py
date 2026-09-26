@@ -1,0 +1,101 @@
+"""
+View controller for Module 3: Multimodal Notes Summarizer & Cheat-Sheet Generator.
+"""
+
+import streamlit as st
+from backend.services import generate_summary, generate_tts_audio
+from backend.parsers import extract_text_from_pdf, extract_delimited_section
+from frontend.components import render_export_buttons
+
+
+def render_summarizer_view(api_key: str, model_name: str):
+    """Renders the study notes summarizer and cheat-sheet module."""
+    st.subheader("📝 Multimodal Notes Summarizer & Exam Cheat-Sheet")
+    st.caption("Paste notes or upload PDFs/Text files to automatically extract key summaries, glossaries, cheat sheets, and audio recaps.")
+
+    notes_text = st.text_area(
+        "Paste study notes, lecture transcript, or textbook extract:",
+        height=180,
+        placeholder="Paste full text, lecture transcript, article, or bullet points here..."
+    )
+
+    uploaded_doc = st.file_uploader(
+        "📎 Or upload document (.pdf, .txt):",
+        type=["pdf", "txt"],
+        key="summarizer_doc_uploader"
+    )
+
+    # Word & Char count metrics
+    active_text = notes_text
+    if uploaded_doc is not None and not active_text.strip():
+        if "pdf" in uploaded_doc.type:
+            active_text = extract_text_from_pdf(uploaded_doc.getvalue())
+        else:
+            active_text = uploaded_doc.getvalue().decode("utf-8", errors="ignore")
+
+    word_count = len(active_text.split()) if active_text.strip() else 0
+    char_count = len(active_text)
+    st.caption(f"📊 Content Stats: **{word_count} words** | **{char_count} characters**")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        summary_depth = st.radio(
+            "Summary Detail Level:",
+            ["Executive Overview (Fast Revision)", "In-Depth Structured Notes", "High-Yield Exam Cheat-Sheet"],
+            horizontal=True
+        )
+
+    summarize_btn = st.button("⚡ Condense & Extract Cheat-Sheet", type="primary", use_container_width=True)
+
+    if summarize_btn:
+        if not api_key:
+            st.error("🔑 Please enter a valid Gemini API Key.")
+            return
+
+        if not active_text.strip():
+            st.warning("Please paste text or upload a document to summarize.")
+            return
+
+        with st.spinner("Analyzing and condensing notes with Gemini..."):
+            result = generate_summary(
+                api_key=api_key,
+                model_name=model_name,
+                text_content=active_text,
+                summary_depth=summary_depth
+            )
+
+            if result["success"]:
+                st.session_state.summarizer_output = result["content"]
+            else:
+                st.error(result["error"])
+
+    # Render Summarizer Output
+    if st.session_state.get("summarizer_output"):
+        raw_summary = st.session_state.summarizer_output
+        st.markdown("---")
+        st.subheader("📋 Distilled Study Materials")
+
+        # Audio synthesis for summary
+        if st.button("🔊 Listen to Summary Audio Recap", key="play_summary_tts"):
+            with st.spinner("Synthesizing audio recap..."):
+                try:
+                    audio_stream = generate_tts_audio(raw_summary)
+                    st.audio(audio_stream, format="audio/mp3")
+                except Exception as err:
+                    st.warning(f"Audio generation unavailable: {str(err)}")
+
+        tab_sum1, tab_sum2, tab_sum3, tab_sum4 = st.tabs([
+            "📌 Executive Overview", "🔑 Key Glossary", "📑 Structured Notes", "🚀 1-Page Cheat Sheet"
+        ])
+
+        with tab_sum1:
+            st.markdown(extract_delimited_section(raw_summary, "Overview") or raw_summary)
+        with tab_sum2:
+            st.markdown(extract_delimited_section(raw_summary, "Key Glossary") or "See Structured Notes tab.")
+        with tab_sum3:
+            st.markdown(extract_delimited_section(raw_summary, "Structured Notes") or "See Overview tab.")
+        with tab_sum4:
+            st.markdown(extract_delimited_section(raw_summary, "One-Page Cheat-Sheet") or "See Overview tab.")
+
+        # Download Buttons
+        render_export_buttons("Study Notes & Cheat-Sheet", raw_summary, key_prefix="summary_export")
