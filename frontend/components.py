@@ -114,10 +114,12 @@ def render_sidebar() -> Tuple[str, str, str]:
         with st.container(border=True):
             st.markdown("<div style='font-weight: 700; font-size: 0.88rem; color: #f1f5f9; margin-bottom: 6px;'>📊 Live Session Metrics</div>", unsafe_allow_html=True)
             
-            # Count active session activities
+            # Count active session activities safely
             c_count = 1 if st.session_state.get("explainer_output") else 0
-            q_count = len(st.session_state.get("quiz_data", []))
-            d_count = len(st.session_state.get("chat_messages", [])) // 2
+            quiz_list = st.session_state.get("quiz_data")
+            q_count = len(quiz_list) if isinstance(quiz_list, list) else 0
+            chat_list = st.session_state.get("chat_messages")
+            d_count = (len(chat_list) // 2) if isinstance(chat_list, list) else 0
 
             st.markdown(f"""
             <div style="font-size: 0.8rem; color: #94a3b8; line-height: 1.8;">
