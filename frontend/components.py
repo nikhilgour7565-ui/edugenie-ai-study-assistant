@@ -38,7 +38,7 @@ def render_sidebar() -> Tuple[str, str, str]:
     3. Minimal footer
     """
     api_key = resolve_api_key()
-    model_name = "gemini-1.5-flash"
+    model_name = "gemini-3.8-flash"
 
     with st.sidebar:
         # 1. App Identity Card
