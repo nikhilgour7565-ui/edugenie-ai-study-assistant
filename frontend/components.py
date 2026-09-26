@@ -1,7 +1,7 @@
 """
 Reusable Streamlit UI components and widgets for EduGenie.
-Implements the redesigned vertical sidebar hierarchy, hero banners,
-and multi-format export buttons.
+Implements the refined SaaS sidebar cards, compact status dots,
+and slim hero banners.
 """
 
 from typing import Tuple
@@ -11,18 +11,23 @@ from backend.parsers import generate_export_document
 
 
 def render_hero_banner():
-    """Renders the top promotional hero banner."""
+    """Renders the refined subtle glass hero header."""
     st.markdown("""
     <div class="hero-banner">
-        <div class="hero-title">🧞 EduGenie <span style="font-size: 1.1rem; color: #a5f3fc; font-weight: 600; padding: 2px 10px; background: rgba(6, 182, 212, 0.2); border-radius: 20px; border: 1px solid rgba(6, 182, 212, 0.4);">v1.0 Pro</span></div>
-        <div class="hero-subtitle">Adaptive AI study companion powered by Google Gemini. Transform dense textbooks, diagrams, and lecture notes into interactive explanations, audio lessons, and active-recall quizzes.</div>
-        <div class="pill-container">
-            <span class="feature-pill">📄 Multimodal PDF/Diagram Intake</span>
-            <span class="feature-pill">🔊 Text-to-Speech Audio</span>
-            <span class="feature-pill">🎓 Calibrated Explanations</span>
-            <span class="feature-pill">❓ Dynamic MCQs & Grading</span>
-            <span class="feature-pill">🗂️ Active Recall Flashcards</span>
-            <span class="feature-pill">📝 1-Page Exam Cheat Sheets</span>
+        <div class="hero-top-row">
+            <h1 class="hero-title">
+                <span>🎓 EduGenie</span>
+                <span style="font-size: 0.72rem; color: #38bdf8; font-weight: 600; padding: 2px 8px; background: rgba(56, 189, 248, 0.12); border-radius: 12px; border: 1px solid rgba(56, 189, 248, 0.3);">Pro AI Study Suite</span>
+            </h1>
+            <div class="pill-container" style="margin-top: 0;">
+                <span class="feature-pill">📄 PDF & Diagram Intake</span>
+                <span class="feature-pill">🔊 Audio Lessons</span>
+                <span class="feature-pill">❓ Smart MCQs</span>
+                <span class="feature-pill">📝 Exam Cheat-Sheets</span>
+            </div>
+        </div>
+        <div class="hero-subtitle">
+            Calibrated concept explanations, interactive active-recall quizzes, and 24/7 doubt clarification powered by Google Gemini.
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -30,80 +35,79 @@ def render_hero_banner():
 
 def render_sidebar() -> Tuple[str, str, str]:
     """
-    Renders the redesigned vertical visual sidebar:
-    1. App Identity Card
-    2. API & Model Configuration Card (bordered container)
-    3. Navigation Menu
-    4. Sidebar Footer (stats & links)
+    Renders the modern SaaS sidebar:
+    1. Compact App Identity Card
+    2. Settings Card with compact status dot (🟢 / 🔴)
+    3. Navigation Menu Card with active highlight pills
+    4. Minimal footer
     """
     with st.sidebar:
-        # 1. App Identity Card
+        # 1. Compact App Identity Card
         st.markdown("""
         <div class="sidebar-brand-card">
-            <div class="brand-icon-wrapper">🎓</div>
-            <div class="brand-title">EduGenie</div>
-            <div class="brand-subtitle">Google Gemini AI Study Suite</div>
+            <div class="brand-icon">🎓</div>
+            <div>
+                <div class="brand-title">EduGenie</div>
+                <div class="brand-subtitle">Gemini AI Study Suite</div>
+            </div>
         </div>
         """, unsafe_allow_html=True)
 
-        # 2. API & Model Configuration Card
+        # 2. Settings & Engine Card
         with st.container(border=True):
-            st.markdown("##### ⚡ Engine & Auth")
-
             default_key = resolve_api_key()
             
-            # API Status Pill
+            # Compact Status Dot Header
             if default_key:
-                st.markdown('<div style="margin-bottom: 8px;"><span class="badge-tag badge-green">● Gemini API Active</span></div>', unsafe_allow_html=True)
+                status_html = '<span title="API Key Connected & Active" style="display: flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 600; color: #86efac;"><span style="height: 8px; width: 8px; background-color: #22c55e; border-radius: 50%; display: inline-block; box-shadow: 0 0 6px #22c55e;"></span> Connected</span>'
             else:
-                st.markdown('<div style="margin-bottom: 8px;"><span class="badge-tag badge-amber">⚠️ Key Required</span></div>', unsafe_allow_html=True)
+                status_html = '<span title="API Key Required" style="display: flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 600; color: #f87171;"><span style="height: 8px; width: 8px; background-color: #ef4444; border-radius: 50%; display: inline-block; box-shadow: 0 0 6px #ef4444;"></span> Key Missing</span>'
+
+            st.markdown(f"""
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-weight: 700; font-size: 0.88rem; color: #f1f5f9;">⚙️ Engine Settings</span>
+                {status_html}
+            </div>
+            """, unsafe_allow_html=True)
 
             user_api_key = st.text_input(
-                "API Key",
+                "Gemini API Key",
                 value=default_key,
                 type="password",
                 placeholder="AIzaSy...",
-                help="Provide your Google Gemini API key. Pre-configured environment keys will auto-populate.",
-                key="sidebar_api_key_input"
+                help="Provide your Google Gemini API key. Pre-configured environment keys auto-populate here.",
+                key="sidebar_api_key_input",
+                label_visibility="collapsed"
             )
             selected_api_key = user_api_key.strip() if user_api_key else default_key
 
             selected_model = st.selectbox(
-                "Model Version",
+                "Model",
                 options=["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash-exp"],
                 index=0,
-                help="`gemini-1.5-flash` provides ultra-fast reasoning and low latency.",
+                help="`gemini-1.5-flash` provides fast, responsive multimodal reasoning.",
                 key="sidebar_model_select"
             )
 
-        st.markdown("<div style='margin-top: 14px;'></div>", unsafe_allow_html=True)
+        # 3. Navigation Menu Card
+        with st.container(border=True):
+            st.markdown("<div style='font-weight: 700; font-size: 0.88rem; color: #f1f5f9; margin-bottom: 8px;'>📚 Study Tools</div>", unsafe_allow_html=True)
+            
+            selected_module = st.radio(
+                "Navigation:",
+                options=[
+                    "🎓 Concept Explainer",
+                    "❓ Quiz & Flashcards",
+                    "📝 Notes Summarizer",
+                    "💬 Doubt Clarifier"
+                ],
+                index=0,
+                label_visibility="collapsed",
+                key="sidebar_module_nav"
+            )
 
-        # 3. Navigation Menu
-        st.markdown("##### 📚 Study Modules")
-        selected_module = st.radio(
-            "Select Module:",
-            options=[
-                "🎓 Concept Explainer",
-                "❓ Quiz & Flashcards",
-                "📝 Notes Summarizer",
-                "💬 Doubt Clarifier"
-            ],
-            index=0,
-            label_visibility="collapsed",
-            key="sidebar_module_nav"
-        )
-
-        st.markdown("---")
-
-        # 4. Sidebar Footer
-        st.markdown("""
-        <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 10px; padding: 12px 14px; font-size: 0.78rem; color: #94a3b8;">
-            <div style="font-weight: 700; color: #e2e8f0; margin-bottom: 4px;">🚀 Study Suite Status</div>
-            <div>• Engine: Google GenAI</div>
-            <div>• Latency: Sub-second Flash</div>
-            <div>• Multimodal: PDF / Image / Text</div>
-        </div>
-        """, unsafe_allow_html=True)
+        # 4. Minimal Footer
+        st.caption("⚡ Powered by Google GenAI & Streamlit")
 
     return selected_api_key, selected_model, selected_module
 

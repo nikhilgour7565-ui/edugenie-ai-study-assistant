@@ -1,6 +1,6 @@
 """
 View controller for Module 1: Adaptive Concept Explainer & Multimodal Tutor.
-Implements dual-column layout (Input Controls vs. Tabbed Workspace with Audio toolbar).
+Implements unified glassmorphic input cards, compact file dropzone, and responsive tabbed output.
 """
 
 import time
@@ -11,14 +11,14 @@ from frontend.components import render_export_buttons
 
 
 def render_explainer_view(api_key: str, model_name: str):
-    """Renders the concept explainer module with dual-column layout."""
+    """Renders the concept explainer module with clean SaaS layout."""
     st.markdown("""
-    <div style="margin-bottom: 20px;">
-        <h2 style="margin: 0; display: flex; align-items: center; gap: 10px;">
+    <div style="margin-bottom: 18px;">
+        <h2 style="margin: 0; display: flex; align-items: center; gap: 8px; font-size: 1.4rem;">
             <span>🎓</span> Adaptive Concept Explainer
         </h2>
-        <div style="color: #94a3b8; font-size: 0.95rem; margin-top: 4px;">
-            Deconstruct difficult STEM and humanities topics with calibrated depth, real-world analogies, and audio lessons.
+        <div style="color: #94a3b8; font-size: 0.88rem; margin-top: 2px;">
+            Deconstruct difficult STEM and humanities topics with calibrated depth, real-world analogies, and audio playback.
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -27,45 +27,47 @@ def render_explainer_view(api_key: str, model_name: str):
 
     with col_input:
         with st.container(border=True):
-            st.markdown("##### ⚙️ Learning Parameters")
+            st.markdown("<div style='font-weight: 700; font-size: 0.95rem; color: #f8fafc; margin-bottom: 10px;'>⚙️ Learning Parameters</div>", unsafe_allow_html=True)
 
             topic = st.text_input(
-                "Concept / Topic Name:",
+                "Concept / Topic Name",
                 placeholder="e.g., Backpropagation, Photosynthesis, Bayes Theorem",
                 key="concept_topic_input"
             )
 
-            audience_level = st.selectbox(
-                "Audience Depth:",
-                [
-                    "Explain Like I'm 5 (ELI5)",
-                    "Beginner / High School",
-                    "Undergraduate / University",
-                    "Advanced / Industry Professional"
-                ],
-                index=1,
-                key="concept_audience_select"
-            )
-
-            output_style = st.selectbox(
-                "Pedagogical Focus:",
-                [
-                    "Balanced & Structured",
-                    "Story & Analogy Driven",
-                    "Real-World Industry Applications",
-                    "Concise Bullet Cheatsheet"
-                ],
-                index=0,
-                key="concept_style_select"
-            )
+            col_sub1, col_sub2 = st.columns(2)
+            with col_sub1:
+                audience_level = st.selectbox(
+                    "Audience Depth",
+                    [
+                        "Explain Like I'm 5 (ELI5)",
+                        "Beginner / High School",
+                        "Undergraduate / University",
+                        "Advanced / Industry Professional"
+                    ],
+                    index=1,
+                    key="concept_audience_select"
+                )
+            with col_sub2:
+                output_style = st.selectbox(
+                    "Learning Focus",
+                    [
+                        "Balanced & Structured",
+                        "Story & Analogy Driven",
+                        "Real-World Applications",
+                        "Concise Bullet Cheatsheet"
+                    ],
+                    index=0,
+                    key="concept_style_select"
+                )
 
             uploaded_file = st.file_uploader(
-                "📎 Attach Diagram or Textbook Page (.png, .jpg, .pdf, .txt):",
+                "📎 Attach Diagram or Document (.png, .jpg, .pdf, .txt)",
                 type=["png", "jpg", "jpeg", "pdf", "txt"],
                 key="explainer_file_uploader"
             )
 
-            generate_btn = st.button("🚀 Synthesize Explanation", type="primary", use_container_width=True, key="explainer_submit_btn")
+            generate_btn = st.button("🚀 Explain Concept & Process Attachments", type="primary", use_container_width=True, key="explainer_submit_btn")
 
         if generate_btn:
             if not api_key:
@@ -111,7 +113,7 @@ def render_explainer_view(api_key: str, model_name: str):
                     <span class="badge-tag badge-purple">Topic: {exp_data['topic']}</span>
                     <span class="badge-tag badge-blue">{exp_data['level']}</span>
                 </div>
-                <span class="stat-pill">⏱️ {exp_data['time']}s</span>
+                <span class="badge-tag badge-cyan">⏱️ Generated in {exp_data['time']}s</span>
             </div>
             """, unsafe_allow_html=True)
 
@@ -155,9 +157,9 @@ def render_explainer_view(api_key: str, model_name: str):
         else:
             # Empty state placeholder
             st.markdown("""
-            <div style="background: rgba(19, 27, 46, 0.5); border: 2px dashed rgba(255, 255, 255, 0.1); border-radius: 14px; padding: 48px 24px; text-align: center; color: #64748b;">
-                <div style="font-size: 2.5rem; margin-bottom: 10px;">📖</div>
-                <div style="font-size: 1.1rem; font-weight: 600; color: #94a3b8; margin-bottom: 6px;">Explanation Workspace Ready</div>
-                <div style="font-size: 0.88rem;">Configure parameters on the left and click <b>Synthesize Explanation</b> to generate tabbed lessons and audio.</div>
+            <div style="background: rgba(18, 24, 38, 0.4); border: 1px dashed rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 42px 20px; text-align: center; color: #64748b;">
+                <div style="font-size: 2.2rem; margin-bottom: 8px;">📖</div>
+                <div style="font-size: 1rem; font-weight: 600; color: #94a3b8; margin-bottom: 4px;">Explanation Workspace Ready</div>
+                <div style="font-size: 0.84rem;">Configure parameters on the left and click <b>Explain Concept</b> to generate tabbed lessons and audio.</div>
             </div>
             """, unsafe_allow_html=True)
