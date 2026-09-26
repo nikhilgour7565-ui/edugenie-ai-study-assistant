@@ -1,7 +1,6 @@
 """
 Reusable Streamlit UI components and widgets for EduGenie.
-Implements the refined SaaS sidebar cards, compact status dots,
-and slim hero banners.
+Clean sidebar focusing directly on navigation and core study tools.
 """
 
 from typing import Tuple
@@ -35,14 +34,17 @@ def render_hero_banner():
 
 def render_sidebar() -> Tuple[str, str, str]:
     """
-    Renders the modern SaaS sidebar:
-    1. Compact App Identity Card
-    2. Settings Card with compact status dot (🟢 / 🔴)
-    3. Navigation Menu Card with active highlight pills
-    4. Minimal footer
+    Renders the streamlined sidebar without cluttered engine/model settings:
+    1. App Identity Card
+    2. Navigation Menu Card with active highlight pills
+    3. Minimal footer
     """
+    # Automatic background resolution of API Key & Model
+    api_key = resolve_api_key()
+    model_name = "gemini-1.5-flash"
+
     with st.sidebar:
-        # 1. Compact App Identity Card
+        # 1. App Identity Card
         st.markdown("""
         <div class="sidebar-brand-card">
             <div class="brand-icon">🎓</div>
@@ -53,43 +55,7 @@ def render_sidebar() -> Tuple[str, str, str]:
         </div>
         """, unsafe_allow_html=True)
 
-        # 2. Settings & Engine Card
-        with st.container(border=True):
-            default_key = resolve_api_key()
-            
-            # Compact Status Dot Header
-            if default_key:
-                status_html = '<span title="API Key Connected & Active" style="display: flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 600; color: #86efac;"><span style="height: 8px; width: 8px; background-color: #22c55e; border-radius: 50%; display: inline-block; box-shadow: 0 0 6px #22c55e;"></span> Connected</span>'
-            else:
-                status_html = '<span title="API Key Required" style="display: flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 600; color: #f87171;"><span style="height: 8px; width: 8px; background-color: #ef4444; border-radius: 50%; display: inline-block; box-shadow: 0 0 6px #ef4444;"></span> Key Missing</span>'
-
-            st.markdown(f"""
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <span style="font-weight: 700; font-size: 0.88rem; color: #f1f5f9;">⚙️ Engine Settings</span>
-                {status_html}
-            </div>
-            """, unsafe_allow_html=True)
-
-            user_api_key = st.text_input(
-                "Gemini API Key",
-                value=default_key,
-                type="password",
-                placeholder="AIzaSy...",
-                help="Provide your Google Gemini API key. Pre-configured environment keys auto-populate here.",
-                key="sidebar_api_key_input",
-                label_visibility="collapsed"
-            )
-            selected_api_key = user_api_key.strip() if user_api_key else default_key
-
-            selected_model = st.selectbox(
-                "Model",
-                options=["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash-exp"],
-                index=0,
-                help="`gemini-1.5-flash` provides fast, responsive multimodal reasoning.",
-                key="sidebar_model_select"
-            )
-
-        # 3. Navigation Menu Card
+        # 2. Navigation Menu Card
         with st.container(border=True):
             st.markdown("<div style='font-weight: 700; font-size: 0.88rem; color: #f1f5f9; margin-bottom: 8px;'>📚 Study Tools</div>", unsafe_allow_html=True)
             
@@ -106,10 +72,10 @@ def render_sidebar() -> Tuple[str, str, str]:
                 key="sidebar_module_nav"
             )
 
-        # 4. Minimal Footer
+        # 3. Minimal Footer
         st.caption("⚡ Powered by Google GenAI & Streamlit")
 
-    return selected_api_key, selected_model, selected_module
+    return api_key, model_name, selected_module
 
 
 def render_export_buttons(title: str, markdown_content: str, key_prefix: str = "export"):
