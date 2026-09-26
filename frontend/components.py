@@ -1,6 +1,6 @@
 """
 Reusable Streamlit UI components and widgets for EduGenie.
-Clean sidebar focusing directly on navigation and core study tools.
+Featuring sleek floating hero headers, modular sidebar, and action buttons.
 """
 
 from typing import Tuple
@@ -10,23 +10,21 @@ from backend.parsers import generate_export_document
 
 
 def render_hero_banner():
-    """Renders the refined subtle glass hero header."""
+    """Renders the sleek floating top banner."""
     st.markdown("""
     <div class="hero-banner">
-        <div class="hero-top-row">
-            <h1 class="hero-title">
-                <span>🎓 EduGenie</span>
-                <span style="font-size: 0.72rem; color: #38bdf8; font-weight: 600; padding: 2px 8px; background: rgba(56, 189, 248, 0.12); border-radius: 12px; border: 1px solid rgba(56, 189, 248, 0.3);">Pro AI Study Suite</span>
-            </h1>
-            <div class="pill-container" style="margin-top: 0;">
-                <span class="feature-pill">📄 PDF & Diagram Intake</span>
-                <span class="feature-pill">🔊 Audio Lessons</span>
-                <span class="feature-pill">❓ Smart MCQs</span>
-                <span class="feature-pill">📝 Exam Cheat-Sheets</span>
+        <div class="hero-left">
+            <div class="hero-icon-box">🎓</div>
+            <div>
+                <h1 class="hero-title">EduGenie</h1>
+                <p class="hero-desc">Adaptive AI study companion powered by Google Gemini</p>
             </div>
         </div>
-        <div class="hero-subtitle">
-            Calibrated concept explanations, interactive active-recall quizzes, and 24/7 doubt clarification powered by Google Gemini.
+        <div class="pill-container">
+            <span class="feature-pill">📄 PDF & Vision Intake</span>
+            <span class="feature-pill">🔊 Audio Lessons</span>
+            <span class="feature-pill">❓ Active Recall MCQs</span>
+            <span class="feature-pill">📝 Exam Cheat-Sheets</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -34,12 +32,11 @@ def render_hero_banner():
 
 def render_sidebar() -> Tuple[str, str, str]:
     """
-    Renders the streamlined sidebar without cluttered engine/model settings:
+    Renders the modern SaaS sidebar:
     1. App Identity Card
     2. Navigation Menu Card with active highlight pills
     3. Minimal footer
     """
-    # Automatic background resolution of API Key & Model
     api_key = resolve_api_key()
     model_name = "gemini-1.5-flash"
 
