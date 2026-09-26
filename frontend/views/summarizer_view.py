@@ -1,12 +1,32 @@
 """
 View controller for Module 3: Multimodal Notes Summarizer & Cheat-Sheet Generator.
-Implements dual-column split layout (Input Dropzone vs. Structured Cheat-Sheet Tabs & Audio).
+Implements pre-loaded sample notes, quick summary buttons, audio player, and instant exports.
 """
 
 import streamlit as st
 from backend.services import generate_summary, generate_tts_audio
 from backend.parsers import extract_text_from_pdf, extract_delimited_section
 from frontend.components import render_export_buttons
+
+SAMPLE_NOTES = """# Artificial Intelligence & Machine Learning Overview
+
+## 1. Fundamental Paradigms
+- Supervised Learning: Algorithms learn from labeled training pairs (Input X -> Label Y). Common models include Linear Regression, Support Vector Machines, and Convolutional Neural Networks.
+- Unsupervised Learning: Discovers hidden patterns in unlabeled data. Key methods include K-Means Clustering and Principal Component Analysis (PCA).
+- Reinforcement Learning: An agent learns through trial-and-error by taking actions in an environment to maximize cumulative reward signals.
+
+## 2. Deep Learning Architecture
+Neural networks consist of stacked layers of interconnected nodes (neurons). Each connection has a learnable weight. During training, the network uses:
+1. Forward Propagation: Calculates output predictions from inputs.
+2. Loss Function: Measures discrepancy between predicted and ground-truth values.
+3. Backpropagation: Uses the chain rule of calculus to compute gradient of loss with respect to every weight.
+4. Optimizer (SGD, Adam): Updates weights in the opposite direction of the gradient to minimize loss.
+
+## 3. Key Formulas & Rules of Thumb
+- Mean Squared Error (MSE): Loss = (1/n) * sum((y_pred - y_true)^2)
+- Gradient Descent Update: W_new = W_old - (learning_rate * gradient)
+- Activation Rule: ReLU(x) = max(0, x) is preferred for deep hidden layers to avoid vanishing gradients.
+"""
 
 
 def render_summarizer_view(api_key: str, model_name: str):
@@ -17,26 +37,38 @@ def render_summarizer_view(api_key: str, model_name: str):
             <span>📝</span> Notes Summarizer & Exam Cheat-Sheet
         </h2>
         <div style="color: #94a3b8; font-size: 0.95rem; margin-top: 4px;">
-            Condense lengthy lecture transcripts, research papers, and textbook chapters into executive summaries and 1-page cheat sheets.
+            Condense lengthy study materials or test immediately with built-in sample notes — no file upload required!
         </div>
     </div>
     """, unsafe_allow_html=True)
+
+    # Initialize sample notes into session if empty
+    if "summarizer_text_input" not in st.session_state:
+        st.session_state["summarizer_text_input"] = ""
+
+    # Quick Sample Load Button
+    col_s_top1, col_s_top2 = st.columns([1.2, 4])
+    with col_s_top1:
+        if st.button("📋 Load Sample AI Notes", key="summarizer_load_sample_btn", use_container_width=True):
+            st.session_state["summarizer_text_input"] = SAMPLE_NOTES
+            st.rerun()
 
     col_input, col_output = st.columns([1, 1.3], gap="large")
 
     with col_input:
         with st.container(border=True):
-            st.markdown("##### 📥 Study Material Dropzone")
+            st.markdown("##### 📥 Study Material Input")
 
             notes_text = st.text_area(
-                "Paste notes, transcript, or article:",
-                height=160,
+                "Paste notes or type lecture text:",
+                value=st.session_state.get("summarizer_text_input", ""),
+                height=180,
                 placeholder="Paste lecture transcript, reading material, or bullet notes here...",
-                key="summarizer_text_input"
+                key="summarizer_text_input_field"
             )
 
             uploaded_doc = st.file_uploader(
-                "📎 Or attach document (.pdf, .txt):",
+                "📎 Optional: Attach document (.pdf, .txt):",
                 type=["pdf", "txt"],
                 key="summarizer_doc_uploader"
             )
@@ -64,9 +96,9 @@ def render_summarizer_view(api_key: str, model_name: str):
 
         if summarize_btn:
             if not api_key:
-                st.error("🔑 Please enter a valid Gemini API Key in the sidebar.")
+                st.error("🔑 Please enter a valid Gemini API Key in the sidebar or `.env` file.")
             elif not active_text.strip():
-                st.warning("Please paste text or upload a document to summarize.")
+                st.warning("Please paste text, load sample notes, or upload a document to summarize.")
             else:
                 with st.spinner("Analyzing and condensing notes with Gemini..."):
                     result = generate_summary(
@@ -78,6 +110,13 @@ def render_summarizer_view(api_key: str, model_name: str):
 
                     if result["success"]:
                         st.session_state.summarizer_output = result["content"]
+                        # Pre-generate Audio Stream
+                        try:
+                            audio_stream = generate_tts_audio(result["content"])
+                            st.session_state.summarizer_audio = audio_stream.getvalue()
+                        except Exception:
+                            st.session_state.summarizer_audio = None
+                        st.rerun()
                     else:
                         st.error(result["error"])
 
@@ -85,17 +124,18 @@ def render_summarizer_view(api_key: str, model_name: str):
         if st.session_state.get("summarizer_output"):
             raw_summary = st.session_state.summarizer_output
 
-            # Audio Recap Bar
-            with st.container(border=True):
-                col_audio, col_status = st.columns([1, 1.5])
-                with col_audio:
-                    if st.button("🔊 Listen to Audio Recap", key="play_summary_tts", use_container_width=True):
-                        with st.spinner("Synthesizing audio recap..."):
-                            try:
-                                audio_stream = generate_tts_audio(raw_summary)
-                                st.audio(audio_stream, format="audio/mp3")
-                            except Exception as err:
-                                st.warning(f"Audio generation unavailable: {str(err)}")
+            # Audio Player Bar
+            if st.session_state.get("summarizer_audio"):
+                st.audio(st.session_state.summarizer_audio, format="audio/mp3")
+            else:
+                if st.button("🔊 Generate Summary Audio Recap", key="play_summary_tts", use_container_width=True):
+                    with st.spinner("Synthesizing audio recap..."):
+                        try:
+                            audio_stream = generate_tts_audio(raw_summary)
+                            st.session_state.summarizer_audio = audio_stream.getvalue()
+                            st.rerun()
+                        except Exception as err:
+                            st.warning(f"Audio generation unavailable: {str(err)}")
 
             # Tabbed Sections
             tab_sum1, tab_sum2, tab_sum3, tab_sum4 = st.tabs([
@@ -116,9 +156,9 @@ def render_summarizer_view(api_key: str, model_name: str):
         else:
             # Empty state placeholder
             st.markdown("""
-            <div style="background: rgba(19, 27, 46, 0.5); border: 2px dashed rgba(255, 255, 255, 0.1); border-radius: 14px; padding: 48px 24px; text-align: center; color: #64748b;">
-                <div style="font-size: 2.5rem; margin-bottom: 10px;">📑</div>
-                <div style="font-size: 1.1rem; font-weight: 600; color: #94a3b8; margin-bottom: 6px;">Summarizer Workspace Ready</div>
-                <div style="font-size: 0.88rem;">Paste notes or upload a PDF on the left and click <b>Condense & Extract</b> to generate structured revision materials.</div>
+            <div style="background: rgba(18, 24, 38, 0.4); border: 1px dashed rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 42px 20px; text-align: center; color: #64748b;">
+                <div style="font-size: 2.2rem; margin-bottom: 8px;">📑</div>
+                <div style="font-size: 1rem; font-weight: 600; color: #94a3b8; margin-bottom: 4px;">Summarizer Workspace Ready</div>
+                <div style="font-size: 0.84rem;">Click <b>Load Sample AI Notes</b> above or paste your study material to instantly generate cheat-sheets and audio recaps.</div>
             </div>
             """, unsafe_allow_html=True)

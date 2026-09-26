@@ -1,6 +1,7 @@
 """
 View controller for Module 1: Adaptive Concept Explainer & Multimodal Tutor.
-Implements unified glassmorphic input cards, compact file dropzone, and responsive tabbed output.
+Implements unified glassmorphic input cards, instant sample topic chips,
+persistent audio lesson player, and responsive tabbed output.
 """
 
 import time
@@ -22,6 +23,26 @@ def render_explainer_view(api_key: str, model_name: str):
         </div>
     </div>
     """, unsafe_allow_html=True)
+
+    # Preset Sample Topic Chips
+    st.markdown("""
+    <div style="margin-bottom: 14px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+        <span style="font-size: 0.8rem; color: #94a3b8;">Quick Sample Topics:</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    chip_cols = st.columns(4)
+    sample_topics = [
+        "Quantum Superposition",
+        "Transformer Neural Networks",
+        "Photosynthesis & Light Reactions",
+        "Dijkstra's Shortest Path"
+    ]
+    for idx, (c, topic_name) in enumerate(zip(chip_cols, sample_topics)):
+        with c:
+            if st.button(f"💡 {topic_name}", key=f"explainer_sample_{idx}", use_container_width=True):
+                st.session_state["concept_topic_input"] = topic_name
+                st.rerun()
 
     col_input, col_output = st.columns([1, 1.4], gap="large")
 
@@ -62,12 +83,12 @@ def render_explainer_view(api_key: str, model_name: str):
                 )
 
             uploaded_file = st.file_uploader(
-                "📎 Attach Diagram or Document (.png, .jpg, .pdf, .txt)",
+                "📎 Optional: Attach Diagram or Document (.png, .jpg, .pdf, .txt)",
                 type=["png", "jpg", "jpeg", "pdf", "txt"],
                 key="explainer_file_uploader"
             )
 
-            generate_btn = st.button("🚀 Explain Concept & Process Attachments", type="primary", use_container_width=True, key="explainer_submit_btn")
+            generate_btn = st.button("🚀 Explain Concept", type="primary", use_container_width=True, key="explainer_submit_btn")
 
         if generate_btn:
             if not api_key:
@@ -98,6 +119,13 @@ def render_explainer_view(api_key: str, model_name: str):
                             "time": elapsed,
                             "level": audience_level
                         }
+                        # Pre-generate Audio Stream
+                        try:
+                            audio_stream = generate_tts_audio(result["content"])
+                            st.session_state.explainer_audio = audio_stream.getvalue()
+                        except Exception:
+                            st.session_state.explainer_audio = None
+                        st.rerun()
                     else:
                         st.error(result["error"])
 
@@ -117,17 +145,18 @@ def render_explainer_view(api_key: str, model_name: str):
             </div>
             """, unsafe_allow_html=True)
 
-            # Audio Player Toolbar
-            with st.container(border=True):
-                col_audio_btn, col_audio_status = st.columns([1, 1.5])
-                with col_audio_btn:
-                    if st.button("🔊 Listen to Audio Lesson", key="play_explainer_tts", use_container_width=True):
-                        with st.spinner("Generating audio..."):
-                            try:
-                                audio_stream = generate_tts_audio(raw_text)
-                                st.audio(audio_stream, format="audio/mp3")
-                            except Exception as err:
-                                st.warning(f"Audio generation unavailable: {str(err)}")
+            # Persistent Audio Player Bar
+            if st.session_state.get("explainer_audio"):
+                st.audio(st.session_state.explainer_audio, format="audio/mp3")
+            else:
+                if st.button("🔊 Generate Audio Lesson", key="play_explainer_tts_btn", use_container_width=True):
+                    with st.spinner("Synthesizing audio lesson..."):
+                        try:
+                            audio_stream = generate_tts_audio(raw_text)
+                            st.session_state.explainer_audio = audio_stream.getvalue()
+                            st.rerun()
+                        except Exception as err:
+                            st.warning(f"Audio generation unavailable: {str(err)}")
 
             # Structured Tabs
             tab_intuition, tab_deep, tab_analogy, tab_apps, tab_quiz, tab_full = st.tabs([
@@ -155,11 +184,11 @@ def render_explainer_view(api_key: str, model_name: str):
             # Export Buttons
             render_export_buttons(exp_data["topic"], raw_text, key_prefix="explainer_export")
         else:
-            # Empty state placeholder
+            # Empty state with interactive prompt
             st.markdown("""
             <div style="background: rgba(18, 24, 38, 0.4); border: 1px dashed rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 42px 20px; text-align: center; color: #64748b;">
                 <div style="font-size: 2.2rem; margin-bottom: 8px;">📖</div>
                 <div style="font-size: 1rem; font-weight: 600; color: #94a3b8; margin-bottom: 4px;">Explanation Workspace Ready</div>
-                <div style="font-size: 0.84rem;">Configure parameters on the left and click <b>Explain Concept</b> to generate tabbed lessons and audio.</div>
+                <div style="font-size: 0.84rem;">Select a quick sample topic above or type your own concept on the left and click <b>Explain Concept</b>.</div>
             </div>
             """, unsafe_allow_html=True)
