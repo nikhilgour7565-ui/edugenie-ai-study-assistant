@@ -33,8 +33,8 @@ def resolve_api_key(user_input_key: str = "") -> str:
     return ""
 
 
-def get_gemini_model(api_key: str, model_name: str = "gemini-1.5-flash", temperature: float = 0.7) -> Optional[genai.GenerativeModel]:
-    """Configures and returns a Gemini GenerativeModel instance with error handling."""
+def get_gemini_model(api_key: str, model_name: str = "gemini-3.8-flash", temperature: float = 0.7) -> Optional[genai.GenerativeModel]:
+    """Configures and returns a Gemini GenerativeModel instance with fallback handling."""
     if not api_key:
         return None
     try:
@@ -45,7 +45,18 @@ def get_gemini_model(api_key: str, model_name: str = "gemini-1.5-flash", tempera
             "top_k": 40,
             "max_output_tokens": 4096,
         }
-        return genai.GenerativeModel(model_name=model_name, generation_config=generation_config)
+        
+        # Primary candidate models in preference order
+        candidate_models = [model_name, "gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.5-flash", "gemini-flash-latest"]
+        
+        for candidate in candidate_models:
+            try:
+                model = genai.GenerativeModel(model_name=candidate, generation_config=generation_config)
+                return model
+            except Exception:
+                continue
+                
+        return genai.GenerativeModel(model_name="gemini-3.8-flash", generation_config=generation_config)
     except Exception as e:
         st.error(f"⚠️ Error configuring Gemini model: {str(e)}")
         return None

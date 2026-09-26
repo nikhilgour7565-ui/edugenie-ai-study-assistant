@@ -13,16 +13,16 @@ from backend.parsers import clean_json_output, extract_text_from_pdf, process_im
 
 def generate_explanation(
     api_key: str,
-    model_name: str,
-    topic: str,
-    audience_level: str,
-    output_style: str,
+    model_name: str = "gemini-3.8-flash",
+    topic: str = "",
+    audience_level: str = "Beginner / High School",
+    output_style: str = "Balanced & Structured",
     uploaded_file_bytes: Optional[bytes] = None,
     file_type: Optional[str] = None
 ) -> Dict[str, Any]:
     """Generates structured concept explanation with optional multimodal document/diagram intake."""
     try:
-        model = get_gemini_model(api_key, model_name, temperature=0.6)
+        model = get_gemini_model(api_key, model_name or "gemini-3.8-flash", temperature=0.6)
         if not model:
             return {"success": False, "error": "Model initialization failed."}
 
@@ -73,14 +73,14 @@ def generate_explanation(
 
 def generate_quiz(
     api_key: str,
-    model_name: str,
-    topic: str,
+    model_name: str = "gemini-3.8-flash",
+    topic: str = "",
     num_questions: int = 5,
     difficulty: str = "Medium"
 ) -> Dict[str, Any]:
     """Generates dynamic multiple-choice questions."""
     try:
-        model = get_gemini_model(api_key, model_name, temperature=0.3)
+        model = get_gemini_model(api_key, model_name or "gemini-3.8-flash", temperature=0.3)
         if not model:
             return {"success": False, "error": "Model initialization failed."}
 
@@ -109,13 +109,13 @@ def generate_quiz(
 
 def generate_flashcards(
     api_key: str,
-    model_name: str,
-    topic: str,
+    model_name: str = "gemini-3.8-flash",
+    topic: str = "",
     count: int = 5
 ) -> Dict[str, Any]:
     """Generates active-recall study flashcards."""
     try:
-        model = get_gemini_model(api_key, model_name, temperature=0.4)
+        model = get_gemini_model(api_key, model_name or "gemini-3.8-flash", temperature=0.4)
         if not model:
             return {"success": False, "error": "Model initialization failed."}
 
@@ -137,13 +137,13 @@ def generate_flashcards(
 
 def generate_summary(
     api_key: str,
-    model_name: str,
-    text_content: str,
+    model_name: str = "gemini-3.8-flash",
+    text_content: str = "",
     summary_depth: str = "In-Depth Structured Notes"
 ) -> Dict[str, Any]:
     """Summarizes study notes and extracts cheat-sheets."""
     try:
-        model = get_gemini_model(api_key, model_name, temperature=0.3)
+        model = get_gemini_model(api_key, model_name or "gemini-3.8-flash", temperature=0.3)
         if not model:
             return {"success": False, "error": "Model initialization failed."}
 
@@ -174,20 +174,18 @@ def generate_summary(
 
 def chat_doubt_solver(
     api_key: str,
-    model_name: str,
-    conversation_history: List[Dict[str, Any]],
-    user_query: str
+    model_name: str = "gemini-3.8-flash",
+    conversation_history: List[Dict[str, Any]] = None,
+    user_query: str = ""
 ) -> Dict[str, Any]:
     """Processes interactive Socratic doubt clarification with conversational history."""
     try:
-        model = get_gemini_model(api_key, model_name, temperature=0.5)
+        model = get_gemini_model(api_key, model_name or "gemini-3.8-flash", temperature=0.5)
         if not model:
             return {"success": False, "error": "Model initialization failed."}
 
-        gemini_history = [
-            {"role": "user" if m["role"] == "user" else "model", "parts": [m["content"]]}
-            for m in conversation_history
-        ]
+        if conversation_history is None:
+            conversation_history = []
 
         chat = model.start_chat(history=gemini_history)
         system_prefix = "You are EduGenie, a supportive, patient, and world-class AI tutor. Answer questions clearly, provide step-by-step guidance, and format formulas or code cleanly with markdown.\n\n"
