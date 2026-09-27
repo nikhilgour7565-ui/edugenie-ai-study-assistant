@@ -3,5 +3,10 @@
     "name": "Demo Scholar",
     "password_hash": "3f5a3b78efd934d3a5be5022a2e8c8ff8a754534e679575bfd62a2b5d9627696",
     "joined": "2026-09-01"
+  },
+  "nikhilgour7565@gmail.com": {
+    "name": "Nikhil Gour",
+    "password_hash": "19e5a3108736cf8f602f91749809aecfdccfd3feb6b5dd18c4e64b6ac3920095",
+    "joined": "2026-09-27"
   }
 }
