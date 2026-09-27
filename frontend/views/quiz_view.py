@@ -1,50 +1,12 @@
 """
 View controller for Module 2: Smart Quiz & Flashcard Deck Generator.
-Implements pre-loaded practice questions, top control ribbon, numbered MCQ cards,
-grading score card, and interactive active recall flashcard flip-deck.
+Generates dynamic quizzes and active recall flashcards strictly from the user's
+specified topic or uploaded notes/documents (.pdf, .txt).
 """
 
 import streamlit as st
 from backend.services import generate_quiz, generate_flashcards
-
-DEFAULT_PRACTICE_QUIZ = [
-    {
-        "id": 1,
-        "question": "Which component in an Artificial Neural Network introduces non-linearity to the model?",
-        "options": ["Activation Function", "Loss Function", "Learning Rate", "Weight Matrix"],
-        "correct_answer": "Activation Function",
-        "explanation": "Activation functions (like ReLU, Sigmoid) introduce non-linear properties to neural networks, allowing them to learn complex patterns beyond simple linear combinations."
-    },
-    {
-        "id": 2,
-        "question": "In Object-Oriented Programming, what principle refers to bundling data and the methods that operate on that data into a single unit?",
-        "options": ["Inheritance", "Encapsulation", "Polymorphism", "Abstraction"],
-        "correct_answer": "Encapsulation",
-        "explanation": "Encapsulation is the bundling of data and the methods that act on that data, restricting direct access to some of an object's components to prevent unintended modifications."
-    },
-    {
-        "id": 3,
-        "question": "What is the primary product formed during the light-dependent reactions of photosynthesis that powers the Calvin Cycle?",
-        "options": ["Glucose and Water", "ATP and NADPH", "Carbon Dioxide and Oxygen", "Pyruvate and Acetyl-CoA"],
-        "correct_answer": "ATP and NADPH",
-        "explanation": "Light reactions produce ATP and NADPH (chemical energy carriers), which are subsequently used in the light-independent Calvin Cycle to fix CO2 into sugar."
-    }
-]
-
-DEFAULT_FLASHCARDS = [
-    {
-        "front": "Overfitting vs. Underfitting",
-        "back": "Overfitting occurs when a model learns noise in training data and performs poorly on unseen data. Underfitting occurs when a model is too simple to capture underlying patterns."
-    },
-    {
-        "front": "Big O: Time Complexity of Binary Search",
-        "back": "O(log n) — because the search space is halved at each comparison step in a sorted array."
-    },
-    {
-        "front": "Mitochondria Function",
-        "back": "The 'powerhouse of the cell' responsible for generating most of the cell's supply of adenosine triphosphate (ATP) through cellular respiration."
-    }
-]
+from backend.parsers import extract_text_from_pdf
 
 
 def render_quiz_view(api_key: str, model_name: str):
@@ -55,24 +17,24 @@ def render_quiz_view(api_key: str, model_name: str):
             <span>❓</span> Smart Quiz & Flashcard Suite
         </h2>
         <div style="color: #94a3b8; font-size: 0.95rem; margin-top: 4px;">
-            Practice immediately with pre-loaded questions or generate custom AI quizzes on any topic without uploading files.
+            Generate real, calibrated AI quizzes and active-recall flashcards directly from your topic or uploaded study material.
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # Initialize default practice questions if session is empty
-    if "quiz_data" not in st.session_state or st.session_state.quiz_data is None:
-        st.session_state.quiz_data = DEFAULT_PRACTICE_QUIZ
+    # Initialize state keys if not set
+    if "quiz_data" not in st.session_state:
+        st.session_state.quiz_data = None
         st.session_state.user_quiz_answers = {}
         st.session_state.quiz_submitted = False
 
-    if "flashcards_data" not in st.session_state or st.session_state.flashcards_data is None:
-        st.session_state.flashcards_data = DEFAULT_FLASHCARDS
+    if "flashcards_data" not in st.session_state:
+        st.session_state.flashcards_data = None
 
     # Quick Practice Preset Chips
     st.markdown("""
     <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-        <span style="font-size: 0.8rem; color: #94a3b8;">Generate on Quick Topics:</span>
+        <span style="font-size: 0.8rem; color: #94a3b8;">Quick Topic Suggestions:</span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -81,8 +43,10 @@ def render_quiz_view(api_key: str, model_name: str):
     for idx, (c, topic_name) in enumerate(zip([col_c1, col_c2, col_c3, col_c4], quick_topics)):
         with c:
             if st.button(f"🎯 {topic_name}", key=f"quiz_quick_{idx}", use_container_width=True):
+                st.session_state["quiz_topic_input"] = topic_name
+                st.session_state["fc_topic_input"] = topic_name
                 if api_key:
-                    with st.spinner(f"Generating quiz on '{topic_name}'..."):
+                    with st.spinner(f"Generating real quiz for '{topic_name}' with Gemini..."):
                         res = generate_quiz(api_key=api_key, model_name=model_name, topic=topic_name, num_questions=3, difficulty="Medium")
                         if res["success"]:
                             st.session_state.quiz_data = res["data"]
@@ -95,41 +59,54 @@ def render_quiz_view(api_key: str, model_name: str):
     with tab_quiz:
         # Top Control Ribbon
         with st.container(border=True):
-            col_q1, col_q2, col_q3, col_q4 = st.columns([2.5, 1, 1, 1.2], gap="medium")
+            col_q1, col_q2, col_q3 = st.columns([2.5, 1, 1], gap="medium")
             with col_q1:
                 quiz_topic = st.text_input(
-                    "Topic / Subject Name:",
+                    "Quiz Topic / Subject:",
                     placeholder="e.g., Cellular Respiration, Operating Systems, Machine Learning",
                     key="quiz_topic_input"
                 )
             with col_q2:
-                num_questions = st.selectbox("Questions:", [3, 5, 10], index=0, key="quiz_num_select")
+                num_questions = st.selectbox("Questions:", [3, 5, 10], index=1, key="quiz_num_select")
             with col_q3:
                 difficulty = st.selectbox("Difficulty:", ["Easy", "Medium", "Hard"], index=1, key="quiz_diff_select")
-            with col_q4:
-                st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
-                create_quiz_btn = st.button("🚀 Generate Quiz", type="primary", use_container_width=True, key="quiz_generate_btn")
+
+            quiz_file = st.file_uploader(
+                "📎 Optional: Upload study document (.pdf, .txt) to generate questions directly from its content:",
+                type=["pdf", "txt"],
+                key="quiz_doc_uploader"
+            )
+
+            create_quiz_btn = st.button("🚀 Generate Quiz from Topic / Document", type="primary", use_container_width=True, key="quiz_generate_btn")
 
         if create_quiz_btn:
             if not api_key:
                 st.error("🔑 Please enter a valid Gemini API Key in the sidebar or `.env` file.")
-            elif not quiz_topic.strip():
-                st.warning("Please enter a subject or topic name.")
+            elif not quiz_topic.strip() and not quiz_file:
+                st.warning("Please enter a subject name or upload a document to generate quiz questions.")
             else:
+                extracted_context = None
+                if quiz_file is not None:
+                    if "pdf" in quiz_file.type:
+                        extracted_context = extract_text_from_pdf(quiz_file.getvalue())
+                    else:
+                        extracted_context = quiz_file.getvalue().decode("utf-8", errors="ignore")
+
                 with st.spinner("Synthesizing dynamic quiz questions with Gemini..."):
                     result = generate_quiz(
                         api_key=api_key,
                         model_name=model_name,
                         topic=quiz_topic,
                         num_questions=num_questions,
-                        difficulty=difficulty
+                        difficulty=difficulty,
+                        text_context=extracted_context
                     )
 
                     if result["success"]:
                         st.session_state.quiz_data = result["data"]
                         st.session_state.user_quiz_answers = {}
                         st.session_state.quiz_submitted = False
-                        st.success(f"Generated {len(result['data'])} interactive questions!")
+                        st.success(f"Generated {len(result['data'])} real questions for '{quiz_topic or quiz_file.name}'!")
                         st.rerun()
                     else:
                         st.error(result["error"])
@@ -186,7 +163,7 @@ def render_quiz_view(api_key: str, model_name: str):
                     st.info(f"💡 **Explanation:** {q.get('explanation', 'No explanation provided.')}")
                     st.write("")
 
-                percentage = score / total
+                percentage = score / total if total > 0 else 0
                 st.progress(percentage)
                 st.metric(label="🏆 Final Score", value=f"{score}/{total} ({percentage*100:.1f}%)")
 
@@ -197,10 +174,19 @@ def render_quiz_view(api_key: str, model_name: str):
                     st.markdown('<span class="badge-tag badge-amber" style="font-size: 0.9rem;">👍 Solid Effort - Review explanations to close gaps.</span>', unsafe_allow_html=True)
                 else:
                     st.markdown('<span class="badge-tag badge-purple" style="font-size: 0.9rem;">📚 Needs Revision - Try re-explaining the topic in Module 1.</span>', unsafe_allow_html=True)
+        else:
+            # Empty State
+            st.markdown("""
+            <div style="background: rgba(18, 24, 38, 0.4); border: 1px dashed rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 42px 20px; text-align: center; color: #64748b; margin-top: 16px;">
+                <div style="font-size: 2.2rem; margin-bottom: 8px;">🎯</div>
+                <div style="font-size: 1rem; font-weight: 600; color: #94a3b8; margin-bottom: 4px;">Quiz Engine Ready</div>
+                <div style="font-size: 0.84rem;">Enter your topic or upload a study document above and click <b>Generate Quiz</b> to synthesize real AI practice questions.</div>
+            </div>
+            """, unsafe_allow_html=True)
 
     with tab_flashcards:
         with st.container(border=True):
-            col_f1, col_f2, col_f3 = st.columns([3, 1, 1.2], gap="medium")
+            col_f1, col_f2 = st.columns([3, 1], gap="medium")
             with col_f1:
                 fc_topic = st.text_input(
                     "Flashcard Topic / Subject:",
@@ -208,28 +194,41 @@ def render_quiz_view(api_key: str, model_name: str):
                     key="fc_topic_input"
                 )
             with col_f2:
-                fc_count = st.selectbox("Deck Size:", [3, 5, 8], index=0, key="fc_count_select")
-            with col_f3:
-                st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
-                create_fc_btn = st.button("🗂️ Build Deck", type="primary", use_container_width=True, key="fc_generate_btn")
+                fc_count = st.selectbox("Deck Size:", [3, 5, 8, 12], index=1, key="fc_count_select")
+
+            fc_file = st.file_uploader(
+                "📎 Optional: Upload study document (.pdf, .txt) to extract flashcards directly from source:",
+                type=["pdf", "txt"],
+                key="fc_doc_uploader"
+            )
+
+            create_fc_btn = st.button("🗂️ Build Deck from Topic / Document", type="primary", use_container_width=True, key="fc_generate_btn")
 
         if create_fc_btn:
             if not api_key:
-                st.error("🔑 Please enter a valid Gemini API Key.")
-            elif not fc_topic.strip():
-                st.warning("Please enter a flashcard topic.")
+                st.error("🔑 Please enter a valid Gemini API Key in the sidebar or `.env` file.")
+            elif not fc_topic.strip() and not fc_file:
+                st.warning("Please enter a flashcard topic or upload a document.")
             else:
-                with st.spinner("Synthesizing high-yield flashcard deck..."):
+                fc_context = None
+                if fc_file is not None:
+                    if "pdf" in fc_file.type:
+                        fc_context = extract_text_from_pdf(fc_file.getvalue())
+                    else:
+                        fc_context = fc_file.getvalue().decode("utf-8", errors="ignore")
+
+                with st.spinner("Synthesizing high-yield flashcard deck with Gemini..."):
                     result = generate_flashcards(
                         api_key=api_key,
                         model_name=model_name,
                         topic=fc_topic,
-                        count=fc_count
+                        count=fc_count,
+                        text_context=fc_context
                     )
 
                     if result["success"]:
                         st.session_state.flashcards_data = result["data"]
-                        st.success(f"Generated {len(result['data'])} active-recall flashcards!")
+                        st.success(f"Generated {len(result['data'])} active-recall flashcards for '{fc_topic or fc_file.name}'!")
                         st.rerun()
                     else:
                         st.error(result["error"])
@@ -246,3 +245,12 @@ def render_quiz_view(api_key: str, model_name: str):
                         <div class="flashcard-back"><b>💡 Answer / Key Definition:</b><br>{card.get('back')}</div>
                     </div>
                     """, unsafe_allow_html=True)
+        else:
+            # Empty State
+            st.markdown("""
+            <div style="background: rgba(18, 24, 38, 0.4); border: 1px dashed rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 42px 20px; text-align: center; color: #64748b; margin-top: 16px;">
+                <div style="font-size: 2.2rem; margin-bottom: 8px;">🗂️</div>
+                <div style="font-size: 1rem; font-weight: 600; color: #94a3b8; margin-bottom: 4px;">Flashcard Deck Ready</div>
+                <div style="font-size: 0.84rem;">Enter a subject or upload notes above and click <b>Build Deck</b> to generate interactive active-recall flashcards.</div>
+            </div>
+            """, unsafe_allow_html=True)

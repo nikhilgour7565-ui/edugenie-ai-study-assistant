@@ -76,16 +76,21 @@ def generate_quiz(
     model_name: str = "gemini-3.8-flash",
     topic: str = "",
     num_questions: int = 5,
-    difficulty: str = "Medium"
+    difficulty: str = "Medium",
+    text_context: Optional[str] = None
 ) -> Dict[str, Any]:
-    """Generates dynamic multiple-choice questions."""
+    """Generates dynamic multiple-choice questions from topic or uploaded document context."""
     try:
         model = get_gemini_model(api_key, model_name or "gemini-3.8-flash", temperature=0.3)
         if not model:
             return {"success": False, "error": "Model initialization failed."}
 
+        context_clause = ""
+        if text_context and text_context.strip():
+            context_clause = f"\n\nBase the questions strictly on the following source material:\n\"\"\"{text_context[:10000]}\"\"\"\n"
+
         quiz_prompt = f"""
-        You are an expert academic examiner. Generate a {num_questions}-question multiple choice quiz on '{topic}' with difficulty '{difficulty}'.
+        You are an expert academic examiner. Generate a {num_questions}-question multiple choice quiz on '{topic if topic else 'the provided study material'}' with difficulty '{difficulty}'.{context_clause}
         
         You MUST respond ONLY with a valid JSON array of objects. Do not include markdown preamble or text outside JSON.
         Format:
@@ -111,16 +116,21 @@ def generate_flashcards(
     api_key: str,
     model_name: str = "gemini-3.8-flash",
     topic: str = "",
-    count: int = 5
+    count: int = 5,
+    text_context: Optional[str] = None
 ) -> Dict[str, Any]:
-    """Generates active-recall study flashcards."""
+    """Generates active-recall study flashcards from topic or uploaded document context."""
     try:
         model = get_gemini_model(api_key, model_name or "gemini-3.8-flash", temperature=0.4)
         if not model:
             return {"success": False, "error": "Model initialization failed."}
 
+        context_clause = ""
+        if text_context and text_context.strip():
+            context_clause = f"\n\nExtract flashcards strictly from this source material:\n\"\"\"{text_context[:10000]}\"\"\"\n"
+
         fc_prompt = f"""
-        Create {count} high-yield study flashcards for '{topic}'.
+        Create {count} high-yield study flashcards for '{topic if topic else 'the provided material'}'.{context_clause}
         Return ONLY a valid JSON array of objects with keys 'front' (question or concept) and 'back' (concise, clear answer/definition).
         Format:
         [
@@ -176,19 +186,29 @@ def chat_doubt_solver(
     api_key: str,
     model_name: str = "gemini-3.8-flash",
     conversation_history: List[Dict[str, Any]] = None,
-    user_query: str = ""
+    user_query: str = "",
+    context_text: Optional[str] = None
 ) -> Dict[str, Any]:
-    """Processes interactive Socratic doubt clarification with conversational history."""
+    """Processes interactive Socratic doubt clarification with conversational history and optional context."""
     try:
         model = get_gemini_model(api_key, model_name or "gemini-3.8-flash", temperature=0.5)
         if not model:
             return {"success": False, "error": "Model initialization failed."}
 
-        if conversation_history is None:
-            conversation_history = []
+        gemini_history = []
+        for msg in (conversation_history or []):
+            role = "user" if msg.get("role") == "user" else "model"
+            gemini_history.append({
+                "role": role,
+                "parts": [msg.get("content", "")]
+            })
 
         chat = model.start_chat(history=gemini_history)
-        system_prefix = "You are EduGenie, a supportive, patient, and world-class AI tutor. Answer questions clearly, provide step-by-step guidance, and format formulas or code cleanly with markdown.\n\n"
+        
+        system_prefix = "You are EduGenie, a supportive, patient, and world-class AI tutor. Answer questions clearly, provide step-by-step guidance, and format formulas or code cleanly with markdown."
+        if context_text and context_text.strip():
+            system_prefix += f"\n\nReference Material / Uploaded Context:\n\"\"\"{context_text[:8000]}\"\"\"\n"
+        system_prefix += "\n\nStudent Query: "
         
         response = chat.send_message(system_prefix + user_query)
         return {"success": True, "reply": response.text}

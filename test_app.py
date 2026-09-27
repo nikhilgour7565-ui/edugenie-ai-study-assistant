@@ -78,6 +78,15 @@ Here is the mechanism."""
         self.assertIn("=== Physics ===", txt_output)
         self.assertIn("Newton's Law", txt_output)
 
+    def test_services_import_and_callable(self):
+        """Test all backend service endpoints are cleanly exported and callable."""
+        from backend.services import generate_explanation, generate_quiz, generate_flashcards, generate_summary, chat_doubt_solver
+        self.assertTrue(callable(generate_explanation))
+        self.assertTrue(callable(generate_quiz))
+        self.assertTrue(callable(generate_flashcards))
+        self.assertTrue(callable(generate_summary))
+        self.assertTrue(callable(chat_doubt_solver))
+
 
 if __name__ == "__main__":
     unittest.main()

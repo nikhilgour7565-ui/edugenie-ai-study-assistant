@@ -38,11 +38,11 @@ api_key, model_name, selected_module = render_sidebar()
 if selected_module == "🎓 Concept Explainer":
     render_explainer_view(api_key, model_name)
 
-elif selected_module == "❓ Smart Quiz & Flashcards":
+elif selected_module == "❓ Quiz & Flashcards":
     render_quiz_view(api_key, model_name)
 
-elif selected_module == "📝 Notes Summarizer & Cheat-Sheet":
+elif selected_module == "📝 Notes Summarizer":
     render_summarizer_view(api_key, model_name)
 
-elif selected_module == "💬 Instant Doubt Clarifier":
+elif selected_module == "💬 Doubt Clarifier":
     render_chat_view(api_key, model_name)
