@@ -1,6 +1,7 @@
 """
 View controller for Login & Registration screens in EduGenie.
-Provides glassmorphic authentication cards, guest access mode, and validation.
+Provides dedicated, elegant glassmorphic authentication pages for both
+Login (Sign In) and Registration (Sign Up).
 """
 
 import streamlit as st
@@ -8,65 +9,85 @@ from backend.auth import authenticate_user, register_user
 
 
 def render_auth_view():
-    """Renders login and registration portal."""
+    """Renders clean dedicated Login and Registration pages."""
     st.markdown("""
-    <div style="text-align: center; margin-top: 10px; margin-bottom: 25px;">
+    <div style="text-align: center; margin-top: 15px; margin-bottom: 25px;">
         <div style="font-size: 3rem; margin-bottom: 6px;">🎓</div>
         <h1 style="font-size: 2.2rem; font-weight: 800; background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #f472b6 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 4px;">
-            Welcome to EduGenie AI
+            EduGenie AI Study Suite
         </h1>
-        <div style="color: #94a3b8; font-size: 1rem; max-width: 540px; margin: 0 auto;">
-            Your autonomous AI study companion for calibrated concept breakdowns, dynamic quizzes, exam cheat-sheets, and personalized learning plans.
+        <div style="color: #94a3b8; font-size: 0.95rem; max-width: 520px; margin: 0 auto;">
+            Empowering students with adaptive concept explanations, 3-MCQ practice drills, high-yield summarization, and personalized learning roadmaps.
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    col_center1, col_center2, col_center3 = st.columns([1, 1.8, 1])
+    if "auth_mode" not in st.session_state:
+        st.session_state.auth_mode = "login"
+
+    col_center1, col_center2, col_center3 = st.columns([1, 1.6, 1])
 
     with col_center2:
-        auth_tab_login, auth_tab_register = st.tabs(["🔐 Sign In", "📝 Create Account"])
+        # Toggle Segmented Buttons between Login and Sign Up
+        col_nav1, col_nav2 = st.columns(2)
+        with col_nav1:
+            if st.button("🔐 Sign In (Login)", type="primary" if st.session_state.auth_mode == "login" else "secondary", use_container_width=True, key="switch_to_login_btn"):
+                st.session_state.auth_mode = "login"
+                st.rerun()
+        with col_nav2:
+            if st.button("📝 Sign Up (Register)", type="primary" if st.session_state.auth_mode == "register" else "secondary", use_container_width=True, key="switch_to_register_btn"):
+                st.session_state.auth_mode = "register"
+                st.rerun()
 
-        with auth_tab_login:
+        st.markdown("<div style='margin-top: 12px;'></div>", unsafe_allow_html=True)
+
+        # 1. Dedicated Login View
+        if st.session_state.auth_mode == "login":
             with st.container(border=True):
-                st.markdown("<h4 style='margin: 0 0 14px 0; color: #f8fafc;'>Sign in to your Study Account</h4>", unsafe_allow_html=True)
+                st.markdown("<h3 style='margin: 0 0 6px 0; color: #f8fafc; font-size: 1.3rem;'>Student Sign In</h3>", unsafe_allow_html=True)
+                st.markdown("<div style='color: #94a3b8; font-size: 0.86rem; margin-bottom: 16px;'>Enter your registered email and password to access your study portal.</div>", unsafe_allow_html=True)
                 
-                login_email = st.text_input("Email Address", placeholder="scholar@edugenie.ai", key="auth_login_email")
-                login_pwd = st.text_input("Password", type="password", placeholder="••••••••", key="auth_login_pwd")
+                login_email = st.text_input("Email Address", placeholder="e.g., student@university.edu", key="auth_login_email")
+                login_pwd = st.text_input("Password", type="password", placeholder="Enter your password", key="auth_login_pwd")
 
-                col_btn1, col_btn2 = st.columns([1.2, 1])
-                with col_btn1:
-                    if st.button("🚀 Sign In", type="primary", use_container_width=True, key="auth_submit_login"):
-                        success, user_data, msg = authenticate_user(login_email, login_pwd)
-                        if success:
-                            st.session_state.authenticated_user = user_data
-                            st.success(f"Welcome back, {user_data['name']}!")
-                            st.rerun()
-                        else:
-                            st.error(msg)
-
-                with col_btn2:
-                    if st.button("⚡ Quick Guest Login", use_container_width=True, key="auth_guest_login"):
-                        st.session_state.authenticated_user = {"email": "guest@edugenie.ai", "name": "Guest Scholar"}
-                        st.success("Logged in as Guest!")
+                st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+                if st.button("🚀 Sign In to Account", type="primary", use_container_width=True, key="auth_submit_login"):
+                    success, user_data, msg = authenticate_user(login_email, login_pwd)
+                    if success:
+                        st.session_state.authenticated_user = user_data
+                        st.success(f"Welcome back, {user_data['name']}!")
                         st.rerun()
+                    else:
+                        st.error(msg)
 
                 st.markdown("""
-                <div style="margin-top: 14px; font-size: 0.82rem; color: #64748b; text-align: center;">
-                    💡 Default Demo Account: <code>student@edugenie.ai</code> | Password: <code>edugenie123</code>
+                <div style="margin-top: 18px; text-align: center; color: #94a3b8; font-size: 0.86rem;">
+                    Don't have an account yet? Click <b>Sign Up (Register)</b> above to create one in seconds.
                 </div>
                 """, unsafe_allow_html=True)
 
-        with auth_tab_register:
+        # 2. Dedicated Registration / Sign Up View
+        else:
             with st.container(border=True):
-                st.markdown("<h4 style='margin: 0 0 14px 0; color: #f8fafc;'>New Student Registration</h4>", unsafe_allow_html=True)
+                st.markdown("<h3 style='margin: 0 0 6px 0; color: #f8fafc; font-size: 1.3rem;'>New Student Registration</h3>", unsafe_allow_html=True)
+                st.markdown("<div style='color: #94a3b8; font-size: 0.86rem; margin-bottom: 16px;'>Create your free EduGenie study account to start learning.</div>", unsafe_allow_html=True)
                 
-                reg_name = st.text_input("Full Name", placeholder="Alex Morgan", key="auth_reg_name")
-                reg_email = st.text_input("Email Address", placeholder="alex@university.edu", key="auth_reg_email")
-                reg_pwd = st.text_input("Create Password", type="password", placeholder="At least 6 characters", key="auth_reg_pwd")
+                reg_name = st.text_input("Full Name", placeholder="e.g., Alex Johnson", key="auth_reg_name")
+                reg_email = st.text_input("Email Address", placeholder="e.g., alex@university.edu", key="auth_reg_email")
+                reg_pwd = st.text_input("Create Password", type="password", placeholder="Minimum 6 characters", key="auth_reg_pwd")
 
-                if st.button("✨ Create Free Account", type="primary", use_container_width=True, key="auth_submit_register"):
+                st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+                if st.button("✨ Complete Registration", type="primary", use_container_width=True, key="auth_submit_register"):
                     success, msg = register_user(reg_email, reg_name, reg_pwd)
                     if success:
-                        st.success(msg + " You can now switch to Sign In.")
+                        st.success(f"Account created successfully for {reg_name}! Redirecting to Sign In...")
+                        st.session_state.auth_mode = "login"
+                        st.rerun()
                     else:
                         st.error(msg)
+
+                st.markdown("""
+                <div style="margin-top: 18px; text-align: center; color: #94a3b8; font-size: 0.86rem;">
+                    Already have an account? Click <b>Sign In (Login)</b> above to access your workspace.
+                </div>
+                """, unsafe_allow_html=True)
