@@ -75,11 +75,11 @@ def generate_quiz(
     api_key: str,
     model_name: str = "gemini-3.8-flash",
     topic: str = "",
-    num_questions: int = 5,
+    num_questions: int = 3,
     difficulty: str = "Medium",
     text_context: Optional[str] = None
 ) -> Dict[str, Any]:
-    """Generates dynamic multiple-choice questions from topic or uploaded document context."""
+    """Generates dynamic multiple-choice questions with 4 options each, stepwise guidance, and learning resources."""
     try:
         model = get_gemini_model(api_key, model_name or "gemini-3.8-flash", temperature=0.3)
         if not model:
@@ -91,6 +91,8 @@ def generate_quiz(
 
         quiz_prompt = f"""
         You are an expert academic examiner. Generate a {num_questions}-question multiple choice quiz on '{topic if topic else 'the provided study material'}' with difficulty '{difficulty}'.{context_clause}
+        Every question MUST have exactly 4 distinct options.
+        Include detailed explanations, stepwise guidance on how to solve/arrive at the right answer, and curated resource recommendations where the student can learn more.
         
         You MUST respond ONLY with a valid JSON array of objects. Do not include markdown preamble or text outside JSON.
         Format:
@@ -100,7 +102,9 @@ def generate_quiz(
             "question": "Question text here?",
             "options": ["Option A", "Option B", "Option C", "Option D"],
             "correct_answer": "Option A",
-            "explanation": "Why this answer is correct."
+            "explanation": "Why this answer is correct and why other options are wrong.",
+            "stepwise_guidance": "Step 1: ..., Step 2: ...",
+            "recommended_resources": "Recommended reading, textbook chapter, or documentation topic to master this concept."
           }}
         ]
         """
@@ -212,6 +216,56 @@ def chat_doubt_solver(
         
         response = chat.send_message(system_prefix + user_query)
         return {"success": True, "reply": response.text}
+    except Exception as e:
+        return {"success": False, "error": handle_gemini_error(e)}
+
+
+def generate_learning_plan(
+    api_key: str,
+    model_name: str = "gemini-3.8-flash",
+    goal: str = "",
+    current_level: str = "Beginner",
+    timeframe_weeks: int = 4,
+    daily_hours: float = 1.5,
+    uploaded_context: Optional[str] = None
+) -> Dict[str, Any]:
+    """Generates a personalized step-by-step learning plan with curated resource recommendations."""
+    try:
+        model = get_gemini_model(api_key, model_name or "gemini-3.8-flash", temperature=0.4)
+        if not model:
+            return {"success": False, "error": "Model initialization failed."}
+
+        context_clause = ""
+        if uploaded_context and uploaded_context.strip():
+            context_clause = f"\n\nSyllabus / Reference Material:\n\"\"\"{uploaded_context[:10000]}\"\"\"\n"
+
+        prompt = f"""
+        You are an expert curriculum designer and master academic coach.
+        Create a personalized, highly actionable step-by-step Learning Plan for the following goal:
+
+        Target Subject / Skill Goal: {goal}
+        Current Learner Proficiency: {current_level}
+        Timeframe: {timeframe_weeks} Weeks
+        Daily Available Study Time: {daily_hours} Hours/Day{context_clause}
+
+        Structure your response with these exact delimiters:
+        [SECTION: Executive Overview]
+        A motivating summary of the learning trajectory, target mastery outcomes, and prerequisite check.
+
+        [SECTION: Stepwise Milestone Roadmap]
+        Numbered stages (Milestone 1 to Milestone N) with explicit checkpoints and mastery metrics.
+
+        [SECTION: Week-by-Week Action Plan]
+        Detailed weekly schedules breaking down daily topics, core concepts, and daily tasks.
+
+        [SECTION: Curated Learning Resources]
+        High-quality recommendations (official documentation, recommended textbooks, seminal papers, popular MOOC courses, YouTube channels, and practice platforms) from where to learn.
+
+        [SECTION: Practice Projects & Assessment]
+        Hands-on mini-projects, coding drills, or essay prompts to test practical application.
+        """
+        response = model.generate_content(prompt)
+        return {"success": True, "content": response.text}
     except Exception as e:
         return {"success": False, "error": handle_gemini_error(e)}
 

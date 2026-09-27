@@ -80,12 +80,26 @@ Here is the mechanism."""
 
     def test_services_import_and_callable(self):
         """Test all backend service endpoints are cleanly exported and callable."""
-        from backend.services import generate_explanation, generate_quiz, generate_flashcards, generate_summary, chat_doubt_solver
+        from backend.services import generate_explanation, generate_quiz, generate_flashcards, generate_summary, chat_doubt_solver, generate_learning_plan
         self.assertTrue(callable(generate_explanation))
         self.assertTrue(callable(generate_quiz))
         self.assertTrue(callable(generate_flashcards))
         self.assertTrue(callable(generate_summary))
         self.assertTrue(callable(chat_doubt_solver))
+        self.assertTrue(callable(generate_learning_plan))
+
+    def test_auth_system(self):
+        """Test user authentication and registration workflows."""
+        from backend.auth import authenticate_user, register_user
+        
+        # Test demo user login
+        auth_ok, user_data, msg = authenticate_user("student@edugenie.ai", "edugenie123")
+        self.assertTrue(auth_ok)
+        self.assertEqual(user_data["name"], "Demo Scholar")
+
+        # Test invalid password
+        bad_auth, _, _ = authenticate_user("student@edugenie.ai", "wrongpwd")
+        self.assertFalse(bad_auth)
 
 
 if __name__ == "__main__":

@@ -1,10 +1,10 @@
 """
 Reusable Streamlit UI components and widgets for EduGenie.
 Featuring an interactive, functional sidebar equipped with:
-- Module Navigation
-- One-Click Quick Launchers (Auto-load topics into any module)
-- Live Study Session Tracker (Questions answered, notes reviewed, concepts learned)
-- API Connection Badge & Cache Reset
+- Module Navigation (Home, Explainer, Quiz, Summarizer, Doubt Clarifier, Learning Plan)
+- User Profile & Session Logout
+- One-Click Quick Launchers
+- Live Study Session Activity Metrics
 """
 
 from typing import Tuple
@@ -23,14 +23,15 @@ def render_hero_banner():
                 <span style="font-size: 0.72rem; color: #38bdf8; font-weight: 600; padding: 2px 8px; background: rgba(56, 189, 248, 0.12); border-radius: 12px; border: 1px solid rgba(56, 189, 248, 0.3);">Pro AI Study Suite</span>
             </h1>
             <div class="pill-container" style="margin-top: 0;">
-                <span class="feature-pill">📄 PDF & Diagram Intake</span>
-                <span class="feature-pill">🔊 Audio Lessons</span>
-                <span class="feature-pill">❓ Smart MCQs</span>
+                <span class="feature-pill">💬 Socratic Doubts</span>
+                <span class="feature-pill">🎓 Deep Explanations</span>
+                <span class="feature-pill">❓ 3-MCQ Quiz Engine</span>
                 <span class="feature-pill">📝 Exam Cheat-Sheets</span>
+                <span class="feature-pill">🗺️ Learning Plans</span>
             </div>
         </div>
         <div class="hero-subtitle">
-            Calibrated concept explanations, interactive active-recall quizzes, and 24/7 doubt clarification powered by Google Gemini.
+            Autonomous academic assistant: Asking questions, topic explanations, long paragraph condensing, 3-question MCQ drills with corrective guidance, and personalized learning roadmaps.
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -39,16 +40,16 @@ def render_hero_banner():
 def render_sidebar() -> Tuple[str, str, str]:
     """
     Renders a fully interactive, functional sidebar:
-    1. App Identity Card with live API status
+    1. App Identity & Authenticated User Card
     2. Primary Study Tool Navigation
-    3. Quick Topic Launchers (loads topic directly into the selected tool)
+    3. Quick Subject Launchers
     4. Live Study Progress & Session Metrics
-    5. Action toolbar (Reset Session, Documentation)
+    5. Action toolbar (Reset Session, Sign Out)
     """
     api_key = resolve_api_key()
     model_name = "gemini-3.8-flash"
 
-    # Initialize study session counters in session_state
+    # Initialize study session counters
     if "concepts_explored" not in st.session_state:
         st.session_state.concepts_explored = 0
     if "quizzes_completed" not in st.session_state:
@@ -57,13 +58,14 @@ def render_sidebar() -> Tuple[str, str, str]:
         st.session_state.doubts_resolved = 0
 
     with st.sidebar:
-        # 1. App Identity Card
-        st.markdown("""
+        # 1. App Identity & User Profile Card
+        user_info = st.session_state.get("authenticated_user", {"name": "Scholar", "email": "student@edugenie.ai"})
+        st.markdown(f"""
         <div class="sidebar-brand-card">
             <div class="brand-icon">🎓</div>
             <div>
                 <div class="brand-title">EduGenie</div>
-                <div class="brand-subtitle">Gemini AI Study Suite</div>
+                <div class="brand-subtitle">👤 {user_info.get('name', 'Scholar')}</div>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -72,68 +74,80 @@ def render_sidebar() -> Tuple[str, str, str]:
         with st.container(border=True):
             st.markdown("<div style='font-weight: 700; font-size: 0.88rem; color: #f1f5f9; margin-bottom: 8px;'>📚 Study Tools</div>", unsafe_allow_html=True)
             
+            nav_options = [
+                "🏠 Home & Overview",
+                "🎓 Concept Explainer",
+                "❓ Quiz & Flashcards",
+                "📝 Notes Summarizer",
+                "💬 Doubt Clarifier",
+                "🗺️ Learning Plan"
+            ]
+
+            # Ensure sidebar_module_nav in state
+            if "sidebar_module_nav" not in st.session_state or st.session_state.sidebar_module_nav not in nav_options:
+                st.session_state.sidebar_module_nav = nav_options[0]
+
             selected_module = st.radio(
                 "Navigation:",
-                options=[
-                    "🎓 Concept Explainer",
-                    "❓ Quiz & Flashcards",
-                    "📝 Notes Summarizer",
-                    "💬 Doubt Clarifier"
-                ],
-                index=0,
-                label_visibility="collapsed",
-                key="sidebar_module_nav"
+                options=nav_options,
+                key="sidebar_module_nav",
+                label_visibility="collapsed"
             )
 
         # 3. Interactive Quick Subject Presets
         with st.container(border=True):
             st.markdown("<div style='font-weight: 700; font-size: 0.88rem; color: #f1f5f9; margin-bottom: 6px;'>⚡ Quick Subject Presets</div>", unsafe_allow_html=True)
-            st.caption("Click to automatically load a topic into your active tool:")
+            st.caption("Click to load a topic into your active tool:")
 
             col_q1, col_q2 = st.columns(2)
             with col_q1:
                 if st.button("🧬 Biology", key="side_preset_bio", use_container_width=True):
                     st.session_state["concept_topic_input"] = "Photosynthesis & Cellular Respiration"
                     st.session_state["quiz_topic_input"] = "Cellular Biology & Genetics"
+                    st.session_state["plan_goal_input"] = "Master AP Biology in 4 Weeks"
                     st.rerun()
                 if st.button("⚛️ Physics", key="side_preset_phy", use_container_width=True):
                     st.session_state["concept_topic_input"] = "Quantum Mechanics & Superposition"
                     st.session_state["quiz_topic_input"] = "Newtonian Mechanics & Laws of Motion"
+                    st.session_state["plan_goal_input"] = "Understand Modern Quantum Physics"
                     st.rerun()
             with col_q2:
                 if st.button("💻 CompSci", key="side_preset_cs", use_container_width=True):
                     st.session_state["concept_topic_input"] = "Transformer Neural Networks"
                     st.session_state["quiz_topic_input"] = "Data Structures & Algorithms"
+                    st.session_state["plan_goal_input"] = "Full Stack AI Engineering Roadmap"
                     st.rerun()
                 if st.button("📐 Math", key="side_preset_math", use_container_width=True):
                     st.session_state["concept_topic_input"] = "Bayes' Theorem & Conditional Probability"
                     st.session_state["quiz_topic_input"] = "Calculus & Linear Algebra"
+                    st.session_state["plan_goal_input"] = "Linear Algebra for Machine Learning"
                     st.rerun()
 
         # 4. Live Session Activity Tracker
         with st.container(border=True):
             st.markdown("<div style='font-weight: 700; font-size: 0.88rem; color: #f1f5f9; margin-bottom: 6px;'>📊 Live Session Metrics</div>", unsafe_allow_html=True)
             
-            # Count active session activities safely
             c_count = 1 if st.session_state.get("explainer_output") else 0
             quiz_list = st.session_state.get("quiz_data")
             q_count = len(quiz_list) if isinstance(quiz_list, list) else 0
             chat_list = st.session_state.get("chat_messages")
             d_count = (len(chat_list) // 2) if isinstance(chat_list, list) else 0
+            p_count = 1 if st.session_state.get("learning_plan_output") else 0
 
             st.markdown(f"""
             <div style="font-size: 0.8rem; color: #94a3b8; line-height: 1.8;">
                 <div>• 💡 Concepts Explained: <b style="color: #38bdf8;">{c_count}</b></div>
                 <div>• ✍️ Active Questions: <b style="color: #a78bfa;">{q_count}</b></div>
                 <div>• 💬 Doubts Discussed: <b style="color: #34d399;">{d_count}</b></div>
+                <div>• 🗺️ Learning Plans: <b style="color: #fbbf24;">{p_count}</b></div>
             </div>
             """, unsafe_allow_html=True)
 
-        # 5. Session Actions & Status
+        # 5. Session Actions & Sign Out
         st.markdown("<div style='margin-top: 6px;'></div>", unsafe_allow_html=True)
-        col_side_rst, col_side_status = st.columns([1.2, 1])
+        col_side_rst, col_side_out = st.columns(2)
         with col_side_rst:
-            if st.button("🔄 Reset Workspace", key="side_clear_all", use_container_width=True):
+            if st.button("🔄 Reset Data", key="side_clear_all", use_container_width=True):
                 st.session_state.explainer_output = None
                 st.session_state.explainer_audio = None
                 st.session_state.quiz_data = None
@@ -143,12 +157,20 @@ def render_sidebar() -> Tuple[str, str, str]:
                 st.session_state.summarizer_output = None
                 st.session_state.summarizer_audio = None
                 st.session_state.chat_messages = []
+                st.session_state.learning_plan_output = None
+                st.session_state.learning_plan_audio = None
                 st.rerun()
-        with col_side_status:
-            if api_key:
-                st.markdown('<div style="text-align: right; padding-top: 6px;"><span class="badge-tag badge-green">🟢 Active</span></div>', unsafe_allow_html=True)
-            else:
-                st.markdown('<div style="text-align: right; padding-top: 6px;"><span class="badge-tag badge-amber">⚠️ No Key</span></div>', unsafe_allow_html=True)
+
+        with col_side_out:
+            if st.button("🚪 Sign Out", key="side_logout_btn", use_container_width=True):
+                st.session_state.authenticated_user = None
+                st.rerun()
+
+        # Connection Status
+        if api_key:
+            st.markdown('<div style="text-align: center; margin-top: 8px;"><span class="badge-tag badge-green">🟢 Gemini 3.8 Connected</span></div>', unsafe_allow_html=True)
+        else:
+            st.markdown('<div style="text-align: center; margin-top: 8px;"><span class="badge-tag badge-amber">⚠️ No Gemini API Key in .env</span></div>', unsafe_allow_html=True)
 
     return api_key, model_name, selected_module
 
